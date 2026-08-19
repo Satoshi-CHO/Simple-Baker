@@ -8,6 +8,8 @@ Blender's built-in baking system is powerful, but preparing a bake can require s
 
 Simple Baker reduces this setup work while keeping Blender's standard baking behavior at its core. You explicitly choose the bake target and, when transferring data, the source model(s) in the add-on UI. The add-on prepares the required selection and Image Texture nodes, runs Blender's built-in bake operation, and saves the selected maps in sequence.
 
+<img align="right" width="320" src="assets/screenshots/screenshot-v1.0.0-en.png" alt="Simple Baker panel in English">
+
 ### What Simple Baker is for
 
 - Learning and using Blender's standard Cycles bake workflow with less setup overhead
@@ -46,6 +48,8 @@ The goal is not to replace Blender's Bake settings. It is to preserve their fami
 
 Changes to Blender nodes, materials, and images can be undone in Blender. Files overwritten on disk cannot be restored with Blender's Undo command.
 
+<br clear="right">
+
 ---
 
 ## 日本語
@@ -55,6 +59,8 @@ Simple Baker は、Blender 標準の Cycles ベイク機能を、より取り組
 Blender 標準のベイク機能は強力ですが、実行前には複数の手作業が必要になります。正しいオブジェクトを選択し、アクティブオブジェクトを設定し、Image Texture ノードを作成・選択し、出力設定を整え、マップごとに同様の作業を繰り返す必要があります。これらは、特にベイクに慣れていない方にとって理解や操作の負担になりやすい部分です。
 
 Simple Baker は、Blender 標準のベイク動作を中心に保ちながら、この準備作業を減らします。ベイク先モデルと、転写時の転写元モデルをアドオン UI で明示的に指定すると、必要なオブジェクト選択と Image Texture ノードの準備を行い、Blender 標準のベイク処理を実行して、選択したマップを連続保存します。
+
+<img align="right" width="320" src="assets/screenshots/screenshot-v1.0.0-jp.png" alt="Simple Baker の日本語 UI">
 
 ### Simple Baker が目指すこと
 
@@ -93,6 +99,8 @@ Simple Baker は、大量処理を中心としたプロダクション向けベ�
 3. ダウンロードした ZIP を指定し、**Simple Baker** を有効にします。
 
 Blender 内のノード・マテリアル・画像の変更は Undo の対象です。一方、ディスクに上書きした出力ファイルは Blender の Undo では復元できません。
+
+<br clear="right">
 
 ---
 

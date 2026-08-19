@@ -46,7 +46,7 @@ jobs:
           root = Path(".")
           package_root = Path("simple_baker")
           output_dir = Path("dist")
-          output_dir.mkdir()
+          output_dir.mkdir(exist_ok=True)
 
           root_files = [
               "__init__.py",
@@ -73,11 +73,25 @@ jobs:
           if not service_files:
               raise SystemExit("No service modules were found.")
 
+          assets_directory = root / "assets"
+          if not assets_directory.is_dir():
+              raise SystemExit("Required assets directory is missing.")
+
+          asset_files = sorted(
+              path
+              for path in assets_directory.rglob("*")
+              if path.is_file() and "__pycache__" not in path.parts
+          )
+          if not asset_files:
+              raise SystemExit("No assets were found.")
+
           archive = output_dir / f"simple_baker-{tag}.zip"
           with ZipFile(archive, "w", ZIP_DEFLATED) as zip_file:
               for relative_path in root_files:
                   zip_file.write(relative_path, package_root / relative_path)
               for source_path in service_files:
+                  zip_file.write(source_path, package_root / source_path)
+              for source_path in asset_files:
                   zip_file.write(source_path, package_root / source_path)
 
           print(f"Created {archive}")
