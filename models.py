@@ -32,13 +32,6 @@ class ImageSpec:
 
 
 @dataclass(frozen=True)
-class BakeJob:
-    """One future bake operation, deliberately free of Blender data-blocks."""
-
-    image_spec: ImageSpec
-
-
-@dataclass(frozen=True)
 class ValidationIssue:
     """A translatable validation result with data for safe message formatting."""
 

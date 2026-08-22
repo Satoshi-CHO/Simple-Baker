@@ -121,12 +121,4 @@ class SIMPLEBAKER_OT_bake_and_save(Operator):
                     count=len(result.failures)
                 ),
             )
-        skipped_connections = [item for item in result.connection_results if not item.connected]
-        if skipped_connections:
-            self.report(
-                {"WARNING"},
-                _translated("Kept {count} existing material input connection(s) unchanged.").format(
-                    count=len(skipped_connections)
-                ),
-            )
         return {"FINISHED"}

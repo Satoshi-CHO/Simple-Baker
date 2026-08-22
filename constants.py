@@ -1,13 +1,13 @@
 """Shared constants for the Simple Baker add-on."""
 
-ADDON_ID = "simple_baker"
+# Extensions are imported below ``bl_ext.<repository>`` while a source checkout
+# is imported as ``simple_baker``. The package owning this module is the exact
+# identifier Blender uses for Add-on Preferences in either installation form.
+ADDON_ID = __package__
 ADDON_NAME = "Simple Baker"
 
 WORKFLOW_SELF = "SELF"
 WORKFLOW_SELECTED_TO_ACTIVE = "SELECTED_TO_ACTIVE"
-
-CONNECTION_NODES_ONLY = "NODES_ONLY"
-CONNECTION_MATERIAL = "MATERIAL"
 
 NORMAL_FORMAT_OPENGL = "OPENGL"
 NORMAL_FORMAT_DIRECTX = "DIRECTX"
@@ -45,7 +45,6 @@ PERSISTED_FIELDS = (
     "resolution",
     "file_format",
     "color_depth",
-    "connection_mode",
     "create_image_texture_nodes",
     "normal_format",
 )

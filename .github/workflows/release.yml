@@ -34,22 +34,23 @@ jobs:
             exit 1
           fi
 
-      - name: Build add-on ZIP
+      - name: Build Blender Extension ZIP
         shell: bash
         run: |
           python3 - <<'PY'
           import os
+          import tomllib
           from pathlib import Path
           from zipfile import ZIP_DEFLATED, ZipFile
 
           tag = os.environ["TAG"]
           root = Path(".")
-          package_root = Path("simple_baker")
           output_dir = Path("dist")
           output_dir.mkdir(exist_ok=True)
 
           root_files = [
               "__init__.py",
+              "blender_manifest.toml",
               "constants.py",
               "i18n.py",
               "models.py",
@@ -60,6 +61,16 @@ jobs:
               "README.md",
               "LICENSE",
           ]
+
+          with (root / "blender_manifest.toml").open("rb") as stream:
+              manifest = tomllib.load(stream)
+          expected_version = tag.removeprefix("v")
+          if manifest.get("id") != "simple_baker":
+              raise SystemExit("Extension manifest id must be simple_baker.")
+          if manifest.get("version") != expected_version:
+              raise SystemExit(
+                  f"Tag {tag} does not match manifest version {manifest.get('version')!r}."
+              )
 
           missing = [path for path in root_files if not (root / path).is_file()]
           if missing:
@@ -73,26 +84,12 @@ jobs:
           if not service_files:
               raise SystemExit("No service modules were found.")
 
-          assets_directory = root / "assets"
-          if not assets_directory.is_dir():
-              raise SystemExit("Required assets directory is missing.")
-
-          asset_files = sorted(
-              path
-              for path in assets_directory.rglob("*")
-              if path.is_file() and "__pycache__" not in path.parts
-          )
-          if not asset_files:
-              raise SystemExit("No assets were found.")
-
           archive = output_dir / f"simple_baker-{tag}.zip"
           with ZipFile(archive, "w", ZIP_DEFLATED) as zip_file:
               for relative_path in root_files:
-                  zip_file.write(relative_path, package_root / relative_path)
+                  zip_file.write(relative_path, relative_path)
               for source_path in service_files:
-                  zip_file.write(source_path, package_root / source_path)
-              for source_path in asset_files:
-                  zip_file.write(source_path, package_root / source_path)
+                  zip_file.write(source_path, source_path)
 
           print(f"Created {archive}")
           PY

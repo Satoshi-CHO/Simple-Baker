@@ -6,13 +6,11 @@ from dataclasses import dataclass
 
 import bpy
 
-from ..constants import CONNECTION_MATERIAL, WORKFLOW_SELECTED_TO_ACTIVE
-from ..models import ImageSpec, SavedContextState
+from ..constants import WORKFLOW_SELECTED_TO_ACTIVE
+from ..models import ImageSpec
 from ..properties import apply_normal_map_format
 from .images import build_image_specs, create_bake_image, remove_unused_managed_images
 from .materials import (
-    MaterialConnectionResult,
-    apply_material_connections,
     prepare_bake_image_nodes,
     remove_temporary_bake_image_nodes,
     rollback_prepared_bake_image_nodes,
@@ -22,8 +20,6 @@ from .materials import (
 from .state import (
     capture_context_state,
     restore_context_state,
-    temporary_bake_type,
-    temporary_cycles_engine,
     temporary_image_settings,
 )
 
@@ -46,7 +42,6 @@ class BakeRunResult:
 
     saved_paths: tuple[str, ...]
     failures: tuple[BakeFailure, ...]
-    connection_results: tuple[MaterialConnectionResult, ...]
 
 
 class BakeProgress:
@@ -151,12 +146,10 @@ def _bake_and_save_one(
     target,
     bake_objects,
     image_spec: ImageSpec,
-    connect_material: bool,
     keep_image_nodes: bool,
-) -> tuple[str, tuple[MaterialConnectionResult, ...]]:
+) -> str:
     """Bake a prepared internal image, then save that same data-block to disk."""
     scene = context.scene
-    bake_settings = scene.render.bake
     image = create_bake_image(image_spec)
     prepared_nodes = ()
     suspended_links = ()
@@ -165,20 +158,19 @@ def _bake_and_save_one(
             target, image, image_spec.map_spec, keep_nodes=keep_image_nodes
         )
         suspended_links = suspend_bake_target_links(prepared_nodes)
-        with temporary_bake_type(bake_settings, image_spec.map_spec.bake_type):
-            # The Properties-editor button can run with a context whose visible
-            # selection differs from the objects selected above.  Pass the UI
-            # choices explicitly so Cycles never falls back to stale selection
-            # state on a re-bake with retained Image Texture nodes.
-            with context.temp_override(
-                active_object=target,
-                object=target,
-                selected_objects=bake_objects,
-                selected_editable_objects=bake_objects,
-            ):
-                result = bpy.ops.object.bake(type=image_spec.map_spec.bake_type)
-            if "FINISHED" not in result:
-                raise RuntimeError("Blender cancelled the bake operation.")
+        # The Properties-editor button can run with a context whose visible
+        # selection differs from the objects selected above.  Pass the UI
+        # choices explicitly so Cycles never falls back to stale selection
+        # state on a re-bake with retained Image Texture nodes.
+        with context.temp_override(
+            active_object=target,
+            object=target,
+            selected_objects=bake_objects,
+            selected_editable_objects=bake_objects,
+        ):
+            result = bpy.ops.object.bake(type=image_spec.map_spec.bake_type)
+        if "FINISHED" not in result:
+            raise RuntimeError("Blender cancelled the bake operation.")
         restore_bake_target_links(suspended_links)
         suspended_links = ()
         remove_temporary_bake_image_nodes(prepared_nodes)
@@ -187,9 +179,6 @@ def _bake_and_save_one(
         # an external image, so the generated image remains usable inside Blender.
         with temporary_image_settings(scene, image_spec.file_format, image_spec.color_depth):
             image.save_render(image_spec.output_path, scene=scene)
-        connections = (
-            apply_material_connections(target, image, image_spec.map_spec) if connect_material else ()
-        )
     except Exception:
         # Do not leave a partly prepared retained node or a partially baked
         # replacement image behind.  Existing nodes still reference their
@@ -202,7 +191,7 @@ def _bake_and_save_one(
         raise
 
     remove_unused_managed_images(image_spec.output_path, image)
-    return image_spec.output_path, connections
+    return image_spec.output_path
 
 
 def _bake_failure_reason(error: Exception, keep_image_nodes: bool) -> str:
@@ -241,44 +230,41 @@ def run_bake_jobs(context, settings) -> BakeRunResult:
     state = capture_context_state(context)
     saved_paths: list[str] = []
     failures: list[BakeFailure] = []
-    connection_results: list[MaterialConnectionResult] = []
     bake_settings = context.scene.render.bake
     target_settings = None
     progress = BakeProgress(context, len(image_specs))
 
     try:
         progress.start()
-        with temporary_cycles_engine(context.scene):
-            _set_bake_selection(
-                context,
-                target,
-                sources,
-                settings.workflow == WORKFLOW_SELECTED_TO_ACTIVE,
-            )
-            target_settings = _set_bake_target_settings(
-                bake_settings,
-                settings.workflow == WORKFLOW_SELECTED_TO_ACTIVE,
-            )
-            for index, image_spec in enumerate(image_specs):
-                try:
-                    progress.begin_map(index, image_spec.map_spec.label)
-                    saved_path, map_connections = _bake_and_save_one(
-                        context,
-                        target,
-                        bake_objects,
-                        image_spec,
-                        settings.connection_mode == CONNECTION_MATERIAL,
-                        settings.create_image_texture_nodes,
+        context.scene.render.engine = "CYCLES"
+        _set_bake_selection(
+            context,
+            target,
+            sources,
+            settings.workflow == WORKFLOW_SELECTED_TO_ACTIVE,
+        )
+        target_settings = _set_bake_target_settings(
+            bake_settings,
+            settings.workflow == WORKFLOW_SELECTED_TO_ACTIVE,
+        )
+        for index, image_spec in enumerate(image_specs):
+            try:
+                progress.begin_map(index, image_spec.map_spec.label)
+                saved_path = _bake_and_save_one(
+                    context,
+                    target,
+                    bake_objects,
+                    image_spec,
+                    settings.create_image_texture_nodes,
+                )
+                saved_paths.append(saved_path)
+            except Exception as error:  # Blender operators expose RuntimeError and may vary by build.
+                failures.append(
+                    BakeFailure(
+                        image_spec=image_spec,
+                        reason=_bake_failure_reason(error, settings.create_image_texture_nodes),
                     )
-                    saved_paths.append(saved_path)
-                    connection_results.extend(map_connections)
-                except Exception as error:  # Blender operators expose RuntimeError and may vary by build.
-                    failures.append(
-                        BakeFailure(
-                            image_spec=image_spec,
-                            reason=_bake_failure_reason(error, settings.create_image_texture_nodes),
-                        )
-                    )
+                )
     except Exception as error:
         # If Cycles cannot be activated or selection setup fails, return a
         # useful result instead of leaking an exception through the operator.
@@ -292,4 +278,4 @@ def run_bake_jobs(context, settings) -> BakeRunResult:
         restore_context_state(context, state)
         progress.close()
 
-    return BakeRunResult(tuple(saved_paths), tuple(failures), tuple(connection_results))
+    return BakeRunResult(tuple(saved_paths), tuple(failures))

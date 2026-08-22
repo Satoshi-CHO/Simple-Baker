@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Iterable
-
 import bpy
 
 from ..constants import BAKE_MAPS
@@ -52,13 +50,6 @@ def build_image_specs(settings) -> tuple[ImageSpec, ...]:
     )
 
 
-def _managed_image_for_key(image_key: str):
-    for image in bpy.data.images:
-        if image.get(MANAGED_IMAGE_FLAG) and image.get(MANAGED_IMAGE_KEY) == image_key:
-            return image
-    return None
-
-
 def _set_image_color_space(image, color_space: str) -> None:
     """Set a known color space when it is available in this Blender installation."""
     try:
@@ -103,11 +94,3 @@ def remove_unused_managed_images(image_key: str, keep_image) -> None:
             and image.users == 0
         ):
             bpy.data.images.remove(image)
-
-
-def create_or_update_bake_images(image_specs: Iterable[ImageSpec]) -> list:
-    """Create isolated managed images in output order.
-
-    Kept for callers that need a batch of fresh image targets.
-    """
-    return [create_bake_image(spec) for spec in image_specs]

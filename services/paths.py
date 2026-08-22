@@ -9,12 +9,7 @@ from typing import Iterable
 import bpy
 
 from ..models import BakeMapSpec, ImageSpec
-from .pure import output_extension, output_filename, sanitize_common_name
-
-
-def default_output_directory() -> str:
-    """Return the saved blend file's directory, or an empty string if unsaved."""
-    return os.path.dirname(bpy.data.filepath) if bpy.data.filepath else ""
+from .pure import output_filename
 
 
 def build_output_path(directory: str, common_name: str, map_spec: BakeMapSpec, file_format: str) -> str:

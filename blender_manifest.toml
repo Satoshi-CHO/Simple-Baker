@@ -1,0 +1,33 @@
+schema_version = "1.0.0"
+
+id = "simple_baker"
+version = "1.0.1"
+name = "Simple Baker"
+tagline = "Bake multiple Cycles maps with less setup"
+maintainer = "Satoshi CHO"
+type = "add-on"
+
+website = "https://github.com/Satoshi-CHO/Simple-Baker"
+tags = ["Bake", "Render"]
+blender_version_min = "5.0.0"
+
+license = [
+    "SPDX:GPL-3.0-or-later",
+]
+
+[permissions]
+files = "Save baked texture images to the user-selected output folder"
+
+[build]
+paths_exclude_pattern = [
+    "__pycache__/",
+    "/.git/",
+    "/.*",
+    "/*.zip",
+    "/assets/",
+    "/docs/",
+    "/dist/",
+    "/release/",
+    "/tests/",
+    "/tools/",
+]

@@ -7,8 +7,6 @@ from bpy.types import AddonPreferences
 
 from .constants import (
     ADDON_ID,
-    CONNECTION_MATERIAL,
-    CONNECTION_NODES_ONLY,
     NORMAL_FORMAT_CUSTOM,
     NORMAL_FORMAT_DIRECTX,
     NORMAL_FORMAT_OPENGL,
@@ -61,23 +59,6 @@ class SIMPLEBAKER_Preferences(AddonPreferences):
         name="Color Depth",
         items=(("8", "8", "8-bit"), ("16", "16", "16-bit"), ("32", "32", "32-bit")),
         default="8",
-    )
-    connection_mode: EnumProperty(
-        name="Node Usage",
-        description="Choose whether baked results are automatically applied to the material",
-        items=(
-            (
-                CONNECTION_NODES_ONLY,
-                "Place Nodes Only",
-                "Add baked images to the material's node editor without changing its appearance.",
-            ),
-            (
-                CONNECTION_MATERIAL,
-                "Place Nodes and Connect to Material",
-                "Automatically apply supported baked results to the material. Existing settings are kept.",
-            ),
-        ),
-        default=CONNECTION_NODES_ONLY,
     )
     create_image_texture_nodes: BoolProperty(
         name="Keep Image Texture Nodes After Baking",

@@ -16,17 +16,6 @@ from .preferences import SIMPLEBAKER_Preferences
 from .properties import SIMPLEBAKER_Settings, SIMPLEBAKER_SourceObject, restore_preferences_to_scene
 from .ui import SIMPLEBAKER_PT_bake
 
-bl_info = {
-    "name": "Simple Baker",
-    "author": "Satoshi CHO",
-    "version": (1, 0, 0),
-    "blender": (5, 0, 0),
-    "location": "Render Properties > Simple Baker",
-    "description": "Bake multiple Cycles maps with automatic image target setup",
-    "category": "Render",
-}
-
-
 CLASSES = (
     SIMPLEBAKER_Preferences,
     SIMPLEBAKER_SourceObject,

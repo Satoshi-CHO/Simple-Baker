@@ -10,8 +10,6 @@ from bpy.types import PropertyGroup
 
 from .constants import (
     ADDON_ID,
-    CONNECTION_MATERIAL,
-    CONNECTION_NODES_ONLY,
     NORMAL_FORMAT_CUSTOM,
     NORMAL_FORMAT_DIRECTX,
     NORMAL_FORMAT_OPENGL,
@@ -21,6 +19,8 @@ from .constants import (
 )
 from .services.pure import default_color_depth, supported_color_depths
 
+_preference_sync_suspended = False
+
 
 def _preferences(context):
     addon = context.preferences.addons.get(ADDON_ID)
@@ -28,6 +28,11 @@ def _preferences(context):
 
 
 def _sync_to_preferences(settings, context) -> None:
+    # Assigning RNA properties while restoring them also invokes their update
+    # callbacks. Do not copy the scene's still-partial state back over the saved
+    # preferences while the restoration batch is in progress.
+    if _preference_sync_suspended:
+        return
     preferences = _preferences(context)
     if preferences is None:
         return
@@ -72,13 +77,6 @@ def _normal_format_updated(settings, context) -> None:
         apply_normal_map_format(scene, settings.normal_format)
 
 
-def _image_texture_nodes_updated(settings, context) -> None:
-    """Temporary bake targets cannot support persistent shader connections."""
-    if not settings.create_image_texture_nodes:
-        settings.connection_mode = CONNECTION_NODES_ONLY
-    _sync_to_preferences(settings, context)
-
-
 def _bake_pass_get(attribute: str):
     def get_value(settings) -> bool:
         return bool(getattr(settings.id_data.render.bake, attribute))
@@ -99,6 +97,15 @@ def _map_property(name: str, description: str) -> BoolProperty:
 
 def _is_mesh_object(_self, obj) -> bool:
     return obj.type == "MESH"
+
+
+def render_output_directory(scene) -> str:
+    """Return the folder represented by Blender's render output path."""
+    render_path = scene.render.filepath
+    absolute_render_path = bpy.path.abspath(render_path)
+    if render_path.endswith(("/", "\\")) or os.path.isdir(absolute_render_path):
+        return absolute_render_path
+    return os.path.dirname(absolute_render_path) if absolute_render_path else ""
 
 
 class SIMPLEBAKER_SourceObject(PropertyGroup):
@@ -145,7 +152,7 @@ class SIMPLEBAKER_Settings(PropertyGroup):
     )
     map_normal: _map_property(
         "Normal",
-        "Bakes surface normal directions as RGB. Connect through a Normal Map node to the Principled Normal input; automatic connection is available.",
+        "Bakes surface normal directions as RGB. Use through a Normal Map node when connecting it to a shader.",
     )
     map_uv: _map_property(
         "UV",
@@ -153,11 +160,11 @@ class SIMPLEBAKER_Settings(PropertyGroup):
     )
     map_roughness: _map_property(
         "Roughness",
-        "Bakes the material roughness pass. Connect to Principled Roughness; automatic connection is available.",
+        "Bakes the material roughness pass for use with a shader's Roughness input.",
     )
     map_emit: _map_property(
         "Emit",
-        "Bakes the material emission or glow color. Connect to Principled Emission Color; automatic connection is available.",
+        "Bakes the material emission or glow color for use with a shader's Emission Color input.",
     )
     map_environment: _map_property(
         "Environment",
@@ -194,29 +201,11 @@ class SIMPLEBAKER_Settings(PropertyGroup):
         default="8",
         update=_setting_updated,
     )
-    connection_mode: EnumProperty(
-        name="Node Usage",
-        description="Choose whether baked results are automatically applied to the material",
-        items=(
-            (
-                CONNECTION_NODES_ONLY,
-                "Place Nodes Only",
-                "Add baked images to the material's node editor without changing its appearance.",
-            ),
-            (
-                CONNECTION_MATERIAL,
-                "Place Nodes and Connect to Material",
-                "Automatically apply supported baked results to the material. Existing settings are kept.",
-            ),
-        ),
-        default=CONNECTION_NODES_ONLY,
-        update=_setting_updated,
-    )
     create_image_texture_nodes: BoolProperty(
         name="Keep Image Texture Nodes After Baking",
         description="Keep baked images available in the material's node editor for later use",
         default=False,
-        update=_image_texture_nodes_updated,
+        update=_setting_updated,
     )
     normal_format: EnumProperty(
         name="Normal Map Format",
@@ -262,17 +251,24 @@ class SIMPLEBAKER_Settings(PropertyGroup):
 
 def restore_preferences_to_scene(context) -> SIMPLEBAKER_Settings:
     """Populate a fresh scene's settings from persistent add-on preferences."""
+    global _preference_sync_suspended
+
     settings = context.scene.simple_baker
     if settings.initialized:
         return settings
 
     preferences = _preferences(context)
     if preferences is not None:
-        for field in PERSISTED_FIELDS:
-            setattr(settings, field, getattr(preferences, field))
+        previous_sync_state = _preference_sync_suspended
+        _preference_sync_suspended = True
+        try:
+            for field in PERSISTED_FIELDS:
+                setattr(settings, field, getattr(preferences, field))
+        finally:
+            _preference_sync_suspended = previous_sync_state
 
-    if not settings.output_directory and bpy.data.filepath:
-        settings.output_directory = os.path.dirname(bpy.data.filepath)
+    if not settings.output_directory:
+        settings.output_directory = render_output_directory(context.scene)
     if settings.bake_target is None and context.active_object and context.active_object.type == "MESH":
         settings.bake_target = context.active_object
     if not settings.common_name and settings.bake_target:

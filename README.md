@@ -8,8 +8,6 @@ Blender's built-in baking system is powerful, but preparing a bake can require s
 
 Simple Baker reduces this setup work while keeping Blender's standard baking behavior at its core. You explicitly choose the bake target and, when transferring data, the source model(s) in the add-on UI. The add-on prepares the required selection and Image Texture nodes, runs Blender's built-in bake operation, and saves the selected maps in sequence.
 
-<img align="right" width="320" src="assets/screenshots/screenshot-v1.0.0-en.png" alt="Simple Baker panel in English">
-
 ### What Simple Baker is for
 
 - Learning and using Blender's standard Cycles bake workflow with less setup overhead
@@ -26,7 +24,7 @@ The goal is not to replace Blender's Bake settings. It is to preserve their fami
 ### Compatibility
 
 - Supported Blender versions: 5.0.0 and later
-- Tested with: Blender 5.0.0, Blender 5.1.2, and Blender 5.2.0 LTS
+- Tested with: Blender 5.0.1, Blender 5.1.2, and Blender 5.2.0 LTS
 - Render engine: Cycles. The add-on switches to Cycles only while baking and restores the previous engine afterwards.
 - Not supported: Blender 4.x, batch baking multiple low-poly sets, UDIM, and automatic UV unwrapping
 
@@ -37,18 +35,15 @@ The goal is not to replace Blender's Bake settings. It is to preserve their fami
 - PNG (8/16-bit), Targa (8-bit), and OpenEXR (16/32-bit) output
 - OpenGL, DirectX, and Custom normal-map formats
 - Temporary Image Texture nodes or nodes retained in the material
-- Optional connections to Principled BSDF inputs for Diffuse, Normal, Roughness, and Emit maps
 - Protection for existing Principled input links and confirmation before overwriting existing files
 
 ### Installation
 
 1. Download `simple_baker-vX.Y.Z.zip` from the [Releases](../../releases) page.
-2. In Blender, open **Edit > Preferences > Add-ons** and select **Install from Disk**.
+2. In Blender, open **Edit > Preferences > Get Extensions** and select **Install from Disk** from the menu.
 3. Select the downloaded ZIP file, then enable **Simple Baker**.
 
 Changes to Blender nodes, materials, and images can be undone in Blender. Files overwritten on disk cannot be restored with Blender's Undo command.
-
-<br clear="right">
 
 ---
 
@@ -59,8 +54,6 @@ Simple Baker は、Blender 標準の Cycles ベイク機能を、より取り組
 Blender 標準のベイク機能は強力ですが、実行前には複数の手作業が必要になります。正しいオブジェクトを選択し、アクティブオブジェクトを設定し、Image Texture ノードを作成・選択し、出力設定を整え、マップごとに同様の作業を繰り返す必要があります。これらは、特にベイクに慣れていない方にとって理解や操作の負担になりやすい部分です。
 
 Simple Baker は、Blender 標準のベイク動作を中心に保ちながら、この準備作業を減らします。ベイク先モデルと、転写時の転写元モデルをアドオン UI で明示的に指定すると、必要なオブジェクト選択と Image Texture ノードの準備を行い、Blender 標準のベイク処理を実行して、選択したマップを連続保存します。
-
-<img align="right" width="320" src="assets/screenshots/screenshot-v1.0.0-jp.png" alt="Simple Baker の日本語 UI">
 
 ### Simple Baker が目指すこと
 
@@ -78,7 +71,7 @@ Simple Baker は、大量処理を中心としたプロダクション向けベ�
 ### 対応状況
 
 - 対応 Blender: 5.0.0 以降
-- 実機検証済み: Blender 5.0.0、Blender 5.1.2、Blender 5.2.0 LTS
+- 実機検証済み: Blender 5.0.1、Blender 5.1.2、Blender 5.2.0 LTS
 - レンダーエンジン: Cycles。ベイク中のみ Cycles に切り替え、完了後に元のエンジンへ戻します。
 - 対象外: Blender 4 系、複数ローポリセットの一括ベイク、UDIM、UV 自動展開
 
@@ -89,18 +82,15 @@ Simple Baker は、大量処理を中心としたプロダクション向けベ�
 - PNG（8/16 bit）、Targa（8 bit）、OpenEXR（16/32 bit）への保存
 - OpenGL、DirectX、Custom のノーマルマップ形式
 - 一時的な Image Texture ノード、またはマテリアルに残すノードの選択
-- Diffuse、Normal、Roughness、Emit マップの Principled BSDF 入力への任意接続
 - 既存の Principled 入力リンクを保護し、既存ファイルの上書きを確認
 
 ### 導入方法
 
 1. [Releases](../../releases) ページから `simple_baker-vX.Y.Z.zip` をダウンロードします。
-2. Blender で **Edit > Preferences > Add-ons** を開き、**Install from Disk** を選びます。
+2. Blender で **Edit > Preferences > Get Extensions** を開き、メニューから **Install from Disk** を選びます。
 3. ダウンロードした ZIP を指定し、**Simple Baker** を有効にします。
 
 Blender 内のノード・マテリアル・画像の変更は Undo の対象です。一方、ディスクに上書きした出力ファイルは Blender の Undo では復元できません。
-
-<br clear="right">
 
 ---
 

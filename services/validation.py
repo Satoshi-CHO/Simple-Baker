@@ -6,7 +6,7 @@ import os
 
 import bpy
 
-from ..constants import CONNECTION_MATERIAL, WORKFLOW_SELECTED_TO_ACTIVE
+from ..constants import WORKFLOW_SELECTED_TO_ACTIVE
 from ..models import ValidationIssue
 from .images import selected_map_specs
 from .pure import is_supported_color_depth
@@ -102,18 +102,6 @@ def validate_output_format(settings) -> list[ValidationIssue]:
     return []
 
 
-def validate_material_connection_nodes(settings) -> list[ValidationIssue]:
-    """A shader connection needs the Image Texture node retained after baking."""
-    if settings.connection_mode == CONNECTION_MATERIAL and not settings.create_image_texture_nodes:
-        return [
-            ValidationIssue(
-                "material_connection_requires_nodes",
-                "Enable Keep Image Texture Nodes After Baking before connecting baked maps to materials.",
-            )
-        ]
-    return []
-
-
 def validate_selected_to_active(settings, target) -> list[ValidationIssue]:
     sources = [item.object for item in settings.source_objects]
     if any(source is None for source in sources):
@@ -158,7 +146,6 @@ def validate_bake_request(context, settings) -> tuple[ValidationIssue, ...]:
     issues.extend(validate_output_directory(settings.output_directory))
     issues.extend(validate_selected_maps(settings))
     issues.extend(validate_output_format(settings))
-    issues.extend(validate_material_connection_nodes(settings))
     if settings.workflow == WORKFLOW_SELECTED_TO_ACTIVE:
         issues.extend(validate_selected_to_active(settings, target))
     return tuple(issues)

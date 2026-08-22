@@ -82,9 +82,7 @@ class SIMPLEBAKER_PT_bake(Panel):
         for color_depth in supported_color_depths(settings.file_format):
             row.prop_enum(settings, "color_depth", color_depth)
         output.prop(settings, "create_image_texture_nodes")
-        if settings.create_image_texture_nodes:
-            output.prop(settings, "connection_mode")
-        else:
+        if not settings.create_image_texture_nodes:
             output.label(text="Baked images are saved, but no Image Texture nodes are kept.", icon="INFO")
 
         standard = layout.box()

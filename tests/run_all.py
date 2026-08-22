@@ -16,8 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT.parent))
 
 import simple_baker
+from simple_baker.constants import ADDON_ID
 from simple_baker.services.bake import BakeProgress
 from simple_baker.services.images import build_image_specs
+from simple_baker.properties import render_output_directory
 
 
 def _create_bake_target() -> bpy.types.Object:
@@ -135,6 +137,62 @@ def _run_progress_reporting_test() -> None:
     failing_progress.close()
     assert failure_context.window_manager.calls == [("begin", 0, 1), ("end",)]
     assert failure_context.workspace.messages[-1] is None
+
+
+def _run_preference_restore_without_feedback_test() -> None:
+    """Restoring scene settings must not overwrite saved add-on preferences."""
+    from simple_baker import properties as properties_module
+    from simple_baker.constants import PERSISTED_FIELDS
+
+    settings = bpy.context.scene.simple_baker
+    preferences = type("SavedPreferences", (), {})()
+    for field in PERSISTED_FIELDS:
+        setattr(preferences, field, getattr(settings, field))
+
+    expected = {
+        "map_ao": True,
+        "map_normal": True,
+        "common_name": "PERSIST_TEST",
+        "output_directory": "/tmp/simple_baker_preference_restore",
+        "resolution": 512,
+        "file_format": "OPEN_EXR",
+        "color_depth": "32",
+        "create_image_texture_nodes": True,
+        "normal_format": "OPENGL",
+    }
+    for field, value in expected.items():
+        setattr(preferences, field, value)
+
+    original_preferences = properties_module._preferences
+    properties_module._preferences = lambda _context: preferences
+    settings.initialized = False
+    try:
+        properties_module.restore_preferences_to_scene(bpy.context)
+        for field, value in expected.items():
+            assert getattr(settings, field) == value, field
+            assert getattr(preferences, field) == value, field
+
+        settings.resolution = 1024
+        assert preferences.resolution == 1024
+    finally:
+        properties_module._preferences = original_preferences
+
+    print("Simple Baker preference restore feedback test passed")
+
+
+def _run_render_output_directory_test() -> None:
+    """The initial bake folder must follow Blender's render output folder."""
+    scene = bpy.context.scene
+    original_path = scene.render.filepath
+    render_directory = Path(tempfile.mkdtemp(prefix="simple_baker_render_"))
+    try:
+        scene.render.filepath = f"{render_directory}/"
+        assert Path(render_output_directory(scene)) == render_directory
+        scene.render.filepath = str(render_directory / "render_")
+        assert Path(render_output_directory(scene)) == render_directory
+    finally:
+        scene.render.filepath = original_path
+    print("Simple Baker render output directory test passed")
 
 
 def _run_self_bake() -> None:
@@ -302,7 +360,6 @@ def _run_multiple_material_bake() -> None:
     settings.color_depth = "8"
     settings.map_diffuse = True
     settings.create_image_texture_nodes = True
-    settings.connection_mode = "NODES_ONLY"
 
     result = bpy.ops.simple_baker.bake_and_save()
     assert "FINISHED" in result, result
@@ -327,7 +384,6 @@ def _run_all_map_bake() -> None:
     settings.file_format = "PNG"
     settings.color_depth = "8"
     settings.create_image_texture_nodes = False
-    settings.connection_mode = "NODES_ONLY"
     for property_name in (
         "map_combined", "map_ao", "map_shadow", "map_normal", "map_uv",
         "map_roughness", "map_emit", "map_environment", "map_diffuse",
@@ -362,10 +418,7 @@ def _run_temporary_target_bake() -> None:
     settings.file_format = "PNG"
     settings.color_depth = "8"
     settings.map_diffuse = True
-    settings.create_image_texture_nodes = True
-    settings.connection_mode = "MATERIAL"
     settings.create_image_texture_nodes = False
-    assert settings.connection_mode == "NODES_ONLY"
 
     material = target.active_material
     user_image = bpy.data.images.new("temporary_target_user_image", 8, 8)
@@ -381,48 +434,7 @@ def _run_temporary_target_bake() -> None:
     print("Simple Baker temporary bake target test passed")
 
 
-def _run_material_connection_rebake() -> None:
-    """A retained, connected node must be safe to bake into again."""
-    target = _create_bake_target()
-    scene = bpy.context.scene
-    settings = scene.simple_baker
-    for property_name in (
-        "map_combined", "map_ao", "map_shadow", "map_normal", "map_uv",
-        "map_roughness", "map_emit", "map_environment", "map_diffuse",
-        "map_glossy", "map_transmission",
-    ):
-        setattr(settings, property_name, False)
-    settings.workflow = "SELF"
-    settings.common_name = "simple_baker_material_connection"
-    settings.output_directory = tempfile.mkdtemp(prefix="simple_baker_")
-    settings.resolution = 32
-    settings.file_format = "PNG"
-    settings.color_depth = "8"
-    settings.map_diffuse = True
-    settings.create_image_texture_nodes = True
-    settings.connection_mode = "MATERIAL"
-
-    result = bpy.ops.simple_baker.bake_and_save()
-    assert "FINISHED" in result, result
-    material = target.active_material
-    principled = material.node_tree.nodes.get("Principled BSDF")
-    assert principled.inputs["Base Color"].is_linked
-
-    # Regression: the retained output node is selected and active before this
-    # second bake, so its existing material connection cannot block the target.
-    result = bpy.ops.simple_baker.bake_and_save(confirmed_overwrite=True)
-    assert "FINISHED" in result, result
-    managed_images = [
-        image
-        for image in bpy.data.images
-        if image.get("simple_baker_image_key")
-        == str(Path(settings.output_directory) / "simple_baker_material_connection_color.png")
-    ]
-    assert len(managed_images) == 1
-    print("Simple Baker material connection re-bake test passed")
-
-
-def _run_existing_connection_and_overwrite_test() -> None:
+def _run_existing_link_and_overwrite_test() -> None:
     """Existing shader links and output files require explicit user confirmation."""
     target = _create_bake_target()
     scene = bpy.context.scene
@@ -434,14 +446,13 @@ def _run_existing_connection_and_overwrite_test() -> None:
     ):
         setattr(settings, property_name, False)
     settings.workflow = "SELF"
-    settings.common_name = "simple_baker_existing_connection"
+    settings.common_name = "simple_baker_existing_link"
     settings.output_directory = tempfile.mkdtemp(prefix="simple_baker_")
     settings.resolution = 32
     settings.file_format = "PNG"
     settings.color_depth = "8"
     settings.map_diffuse = True
     settings.create_image_texture_nodes = True
-    settings.connection_mode = "MATERIAL"
 
     material = target.active_material
     principled = material.node_tree.nodes["Principled BSDF"]
@@ -450,7 +461,7 @@ def _run_existing_connection_and_overwrite_test() -> None:
     result = bpy.ops.simple_baker.bake_and_save()
     assert "FINISHED" in result, result
     assert principled.inputs["Base Color"].links[0].from_node == user_color
-    output_path = Path(settings.output_directory) / "simple_baker_existing_connection_color.png"
+    output_path = Path(settings.output_directory) / "simple_baker_existing_link_color.png"
     original_bytes = output_path.read_bytes()
     original_image = _managed_image_nodes(material)[0].image
 
@@ -469,7 +480,7 @@ def _run_existing_connection_and_overwrite_test() -> None:
     assert "FINISHED" in result, result
     assert principled.inputs["Base Color"].links[0].from_node == user_color
     assert len(_managed_image_nodes(material)) == 1
-    print("Simple Baker existing connection and overwrite test passed")
+    print("Simple Baker existing link and overwrite test passed")
 
 
 def _run_failed_save_rollback_test() -> None:
@@ -491,7 +502,6 @@ def _run_failed_save_rollback_test() -> None:
     settings.color_depth = "8"
     settings.map_diffuse = True
     settings.create_image_texture_nodes = True
-    settings.connection_mode = "NODES_ONLY"
 
     result = bpy.ops.simple_baker.bake_and_save()
     assert "FINISHED" in result, result
@@ -518,7 +528,6 @@ def _run_failed_save_rollback_test() -> None:
                 target,
                 (target,),
                 image_spec,
-                connect_material=False,
                 keep_image_nodes=True,
             )
             raise AssertionError("Expected simulated save failure")
@@ -636,7 +645,6 @@ def _run_multiple_map_rebake() -> None:
     settings.map_diffuse = True
     settings.map_ao = True
     settings.create_image_texture_nodes = True
-    settings.connection_mode = "NODES_ONLY"
 
     material = target.active_material
     user_image = bpy.data.images.new("user_bake_target", 8, 8)
@@ -676,9 +684,13 @@ def main() -> None:
     simple_baker.register()
     try:
         assert hasattr(bpy.types.Scene, "simple_baker")
+        assert ADDON_ID == "simple_baker"
         assert bpy.context.scene.simple_baker.resolution == 2048
         assert not bpy.context.scene.simple_baker.create_image_texture_nodes
         assert bpy.context.scene.simple_baker.normal_format == "CUSTOM"
+        assert Path(bpy.context.scene.simple_baker.output_directory) == Path(
+            render_output_directory(bpy.context.scene)
+        )
         assert initial_normal_settings == (
             bpy.context.scene.render.bake.normal_space,
             bpy.context.scene.render.bake.normal_r,
@@ -687,6 +699,8 @@ def main() -> None:
         )
         print("Simple Baker Blender smoke test passed")
         _run_progress_reporting_test()
+        _run_preference_restore_without_feedback_test()
+        _run_render_output_directory_test()
         _run_normal_format_test()
         _run_output_format_test()
         _run_output_format_save_test()
@@ -696,8 +710,7 @@ def main() -> None:
         _run_multiple_material_bake()
         _run_all_map_bake()
         _run_temporary_target_bake()
-        _run_material_connection_rebake()
-        _run_existing_connection_and_overwrite_test()
+        _run_existing_link_and_overwrite_test()
         _run_failed_save_rollback_test()
         _run_multiple_map_rebake()
     finally:

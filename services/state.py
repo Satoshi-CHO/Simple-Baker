@@ -63,37 +63,6 @@ def restore_context_state(context, state: SavedContextState) -> None:
             pass
 
 
-@contextmanager
-def temporary_cycles_engine(scene):
-    """Temporarily switch to Cycles and always restore the original engine."""
-    previous_engine = scene.render.engine
-    try:
-        scene.render.engine = "CYCLES"
-        yield
-    finally:
-        scene.render.engine = previous_engine
-
-
-@contextmanager
-def temporary_bake_type(bake_settings, bake_type: str):
-    """Temporarily set an RNA bake type when the Blender build exposes one.
-
-    Blender 5.1 selects the bake type through ``bpy.ops.object.bake(type=...)``
-    and no longer exposes ``BakeSettings.bake_type``. Older builds may still
-    provide the RNA property, so keep the context manager compatible with both.
-    """
-    if not hasattr(bake_settings, "bake_type"):
-        yield
-        return
-
-    previous_type = bake_settings.bake_type
-    try:
-        bake_settings.bake_type = bake_type
-        yield
-    finally:
-        bake_settings.bake_type = previous_type
-
-
 def _image_format_snapshot(image_settings) -> dict[str, str]:
     return {
         attribute: getattr(image_settings, attribute)
