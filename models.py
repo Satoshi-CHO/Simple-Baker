@@ -16,6 +16,9 @@ class BakeMapSpec:
     suffix: str
     label: str
     color_space: str = "sRGB"
+    is_pbr: bool = False
+    pbr_socket_name: str | None = None
+    invert: bool = False
 
 
 @dataclass(frozen=True)

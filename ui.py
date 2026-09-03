@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import bpy
 from bpy.types import Panel
 
 from .constants import (
@@ -14,6 +15,7 @@ from .operators import (
     SIMPLEBAKER_OT_bake_and_save,
     SIMPLEBAKER_OT_remove_source_object,
 )
+from .services.images import build_image_specs
 from .services.pure import supported_color_depths
 
 
@@ -56,22 +58,77 @@ class SIMPLEBAKER_PT_bake(Panel):
 
         maps = layout.box()
         maps.label(text="Output Maps")
-        grid = maps.grid_flow(columns=2, even_columns=True, even_rows=False)
-        for property_name in (
-            "map_combined",
-            "map_ao",
-            "map_shadow",
-            "map_normal",
-            "map_uv",
-            "map_roughness",
-            "map_emit",
-            "map_environment",
-            "map_diffuse",
-            "map_glossy",
-            "map_transmission",
-        ):
-            grid.prop(settings, property_name)
+        maps.prop(settings, "output_map_tab", expand=True)
+        if settings.output_map_tab == "PBR":
+            maps.prop(settings, "pbr_output_section", expand=True)
+            if settings.pbr_output_section == "INDIVIDUAL":
+                maps.label(text="Standard PBR Maps")
+                grid = maps.grid_flow(columns=2, even_columns=True, even_rows=False)
+                map_properties = (
+                    ("map_base_color", None),
+                    ("map_metallic", None),
+                    ("map_roughness", None),
+                    ("map_smoothness", None),
+                    ("map_normal", None),
+                    ("map_ao", None),
+                    ("map_alpha", None),
+                    ("map_emit", "Emission"),
+                )
+                for property_name, label in map_properties:
+                    if label is None:
+                        grid.prop(settings, property_name)
+                    else:
+                        grid.prop(settings, property_name, text=label)
 
+                maps.prop(settings, "show_advanced_pbr_inputs")
+                if settings.show_advanced_pbr_inputs:
+                    adv_grid = maps.grid_flow(columns=2, even_columns=True, even_rows=False)
+                    adv_properties = (
+                        "map_transmission_weight",
+                        "map_specular_ior_level",
+                        "map_coat_weight",
+                        "map_coat_roughness",
+                        "map_sheen_weight",
+                        "map_subsurface_weight",
+                    )
+                    for property_name in adv_properties:
+                        adv_grid.prop(settings, property_name)
+            else:
+                pack_col = maps.column(align=True)
+                for prop_name, channels_text in (
+                    ("pack_orm", "R: AO | G: Roughness | B: Metallic | A: 1.0"),
+                    ("pack_gltf", "R: 1.0 | G: Roughness | B: Metallic | A: 1.0"),
+                    ("pack_unity_mask", "R: Metallic | G: AO | B: 0.0 | A: Smoothness"),
+                    ("pack_base_color_alpha", "RGB: Base Color | A: Alpha"),
+                ):
+                    item_box = pack_col.box()
+                    item_box.prop(settings, prop_name)
+                    sub_row = item_box.row()
+                    sub_row.alignment = "LEFT"
+                    sub_row.label(
+                        text=f"  ↳ {bpy.app.translations.pgettext_iface(channels_text)}",
+                        icon="TEXTURE",
+                    )
+        else:
+            grid = maps.grid_flow(columns=2, even_columns=True, even_rows=False)
+            map_properties = (
+                ("map_combined", None),
+                ("map_ao", None),
+                ("map_shadow", None),
+                ("map_normal", None),
+                ("map_uv", None),
+                ("map_roughness", None),
+                ("map_emit", None),
+                ("map_environment", None),
+                ("map_diffuse", None),
+                ("map_glossy", None),
+                ("map_transmission", None),
+            )
+            for property_name, label in map_properties:
+                if label is None:
+                    grid.prop(settings, property_name)
+                else:
+                    grid.prop(settings, property_name, text=label)
         output = layout.box()
         output.label(text="Output Images & Targets")
         output.prop(settings, "common_name")
@@ -131,6 +188,26 @@ class SIMPLEBAKER_PT_bake(Panel):
 
         action = layout.box()
         action.label(text="Bake & Save")
+        selected_specs = build_image_specs(settings)
+        action.label(
+            text=bpy.app.translations.pgettext_iface("Selected Maps: {count}").format(
+                count=len(selected_specs)
+            )
+        )
+        if selected_specs:
+            selected_labels = [
+                bpy.app.translations.pgettext_iface(
+                    "Emission" if spec.map_spec.key == "emit" else spec.map_spec.label
+                )
+                for spec in selected_specs
+            ]
+            for index in range(0, len(selected_labels), 4):
+                action.label(
+                    text=", ".join(selected_labels[index : index + 4]),
+                    icon="CHECKMARK" if index == 0 else "BLANK1",
+                )
+        else:
+            action.label(text="No maps selected.", icon="INFO")
         action.label(text="Undo does not restore overwritten output files.", icon="INFO")
         action.label(text="Choose the models above, then run Bake & Save.", icon="INFO")
         action.operator(SIMPLEBAKER_OT_bake_and_save.bl_idname, icon="RENDER_STILL")

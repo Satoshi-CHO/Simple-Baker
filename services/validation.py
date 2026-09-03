@@ -84,7 +84,10 @@ def validate_output_directory(directory: str) -> list[ValidationIssue]:
 
 
 def validate_selected_maps(settings) -> list[ValidationIssue]:
-    if not selected_map_specs(settings):
+    from .packing import selected_pack_specs
+
+    has_maps = bool(selected_map_specs(settings)) or bool(selected_pack_specs(settings))
+    if not has_maps:
         return [ValidationIssue("no_maps", "Select at least one output map before baking.")]
     return []
 
@@ -137,6 +140,50 @@ def validate_selected_to_active(settings, target) -> list[ValidationIssue]:
     return []
 
 
+def validate_pbr_compatibility(settings, target) -> list[ValidationIssue]:
+    """Validate material node structure when PBR extraction maps are selected."""
+    from .images import MAP_SPECS
+    from .packing import required_source_map_keys
+
+    needed_keys = {spec.key for spec in selected_map_specs(settings)}
+    for key in required_source_map_keys(settings):
+        needed_keys.add(key)
+
+    pbr_map_lookup = {spec.key: spec for spec in MAP_SPECS if spec.is_pbr}
+    needed_pbr_specs = [pbr_map_lookup[k] for k in needed_keys if k in pbr_map_lookup]
+    if not needed_pbr_specs:
+        return []
+
+    if settings.workflow == WORKFLOW_SELECTED_TO_ACTIVE:
+        sources = [item.object for item in settings.source_objects if item.object and item.object.type == "MESH"]
+        source_objects = sources
+    else:
+        source_objects = [target] if target and target.type == "MESH" else []
+
+    if not source_objects:
+        return []
+
+    from .pbr import collect_source_materials, inspect_pbr_compatibility
+
+    materials = collect_source_materials(source_objects)
+    if not materials:
+        return [
+            ValidationIssue(
+                "pbr_no_materials",
+                "PBR map baking requires at least one material assigned to the source model(s).",
+            )
+        ]
+
+    issues: list[ValidationIssue] = []
+    for material in materials:
+        for map_spec in needed_pbr_specs:
+            issue = inspect_pbr_compatibility(material, map_spec)
+            if issue is not None:
+                issues.append(issue)
+                break
+    return issues
+
+
 def validate_bake_request(context, settings) -> tuple[ValidationIssue, ...]:
     """Run every preflight check without creating images, nodes, or files."""
     target = settings.bake_target
@@ -148,4 +195,5 @@ def validate_bake_request(context, settings) -> tuple[ValidationIssue, ...]:
     issues.extend(validate_output_format(settings))
     if settings.workflow == WORKFLOW_SELECTED_TO_ACTIVE:
         issues.extend(validate_selected_to_active(settings, target))
+    issues.extend(validate_pbr_compatibility(settings, target))
     return tuple(issues)

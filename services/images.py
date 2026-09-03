@@ -11,6 +11,35 @@ from .paths import build_output_path
 MANAGED_IMAGE_KEY = "simple_baker_image_key"
 MANAGED_IMAGE_FLAG = "simple_baker_managed"
 
+PBR_SPECS = {
+    "base_color": ("Base Color", False),
+    "metallic": ("Metallic", False),
+    "alpha": ("Alpha", False),
+    "smoothness": ("Roughness", True),
+    "transmission_weight": ("Transmission Weight", False),
+    "specular_ior_level": ("Specular IOR Level", False),
+    "coat_weight": ("Coat Weight", False),
+    "coat_roughness": ("Coat Roughness", False),
+    "sheen_weight": ("Sheen Weight", False),
+    "subsurface_weight": ("Subsurface Weight", False),
+}
+
+NON_COLOR_KEYS = {
+    "ao",
+    "normal",
+    "roughness",
+    "uv",
+    "metallic",
+    "alpha",
+    "smoothness",
+    "transmission_weight",
+    "specular_ior_level",
+    "coat_weight",
+    "coat_roughness",
+    "sheen_weight",
+    "subsurface_weight",
+}
+
 MAP_SPECS = tuple(
     BakeMapSpec(
         key=key,
@@ -18,7 +47,10 @@ MAP_SPECS = tuple(
         bake_type=bake_type,
         suffix=suffix,
         label=key.replace("_", " ").title(),
-        color_space="Non-Color" if key in {"ao", "normal", "roughness", "uv"} else "sRGB",
+        color_space="Non-Color" if key in NON_COLOR_KEYS else "sRGB",
+        is_pbr=key in PBR_SPECS,
+        pbr_socket_name=PBR_SPECS[key][0] if key in PBR_SPECS else None,
+        invert=PBR_SPECS[key][1] if key in PBR_SPECS else False,
     )
     for key, bake_type, suffix in BAKE_MAPS
 )
@@ -29,9 +61,9 @@ def selected_map_specs(settings) -> tuple[BakeMapSpec, ...]:
     return tuple(spec for spec in MAP_SPECS if getattr(settings, spec.setting_name))
 
 
-def build_image_specs(settings) -> tuple[ImageSpec, ...]:
+def build_image_specs(settings, *, include_packed: bool = True) -> tuple[ImageSpec, ...]:
     """Describe requested output images without creating Blender data-blocks."""
-    return tuple(
+    specs = [
         ImageSpec(
             map_spec=map_spec,
             image_name=f"{settings.common_name}_{map_spec.suffix}",
@@ -47,7 +79,12 @@ def build_image_specs(settings) -> tuple[ImageSpec, ...]:
             color_depth=settings.color_depth,
         )
         for map_spec in selected_map_specs(settings)
-    )
+    ]
+    if include_packed:
+        from .packing import build_pack_image_specs
+
+        specs.extend(build_pack_image_specs(settings))
+    return tuple(specs)
 
 
 def _set_image_color_space(image, color_space: str) -> None:

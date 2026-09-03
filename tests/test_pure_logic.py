@@ -29,6 +29,34 @@ class FilenameTests(unittest.TestCase):
     def test_builds_stable_map_filename(self):
         self.assertEqual(pure.output_filename("chair", "normal", "PNG"), "chair_normal.png")
 
+    def test_builds_stable_pbr_filenames(self):
+        for suffix in ("base_color", "metallic", "alpha", "smoothness"):
+            self.assertEqual(
+                pure.output_filename("model", suffix, "PNG"),
+                f"model_{suffix}.png",
+            )
+
+    def test_builds_stable_pack_filenames(self):
+        for suffix in ("orm", "metallic_roughness", "mask", "base_color_alpha"):
+            self.assertEqual(
+                pure.output_filename("model", suffix, "PNG"),
+                f"model_{suffix}.png",
+            )
+
+    def test_builds_stable_advanced_pbr_filenames(self):
+        for suffix in (
+            "transmission_weight",
+            "specular_ior_level",
+            "coat_weight",
+            "coat_roughness",
+            "sheen_weight",
+            "subsurface_weight",
+        ):
+            self.assertEqual(
+                pure.output_filename("model", suffix, "PNG"),
+                f"model_{suffix}.png",
+            )
+
     def test_rejects_unknown_image_format(self):
         with self.assertRaises(KeyError):
             pure.output_extension("UNKNOWN")

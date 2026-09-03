@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "simple_baker"
-version = "1.0.1"
+version = "1.1.0"
 name = "Simple Baker"
 tagline = "Bake multiple Cycles maps with less setup"
 maintainer = "Satoshi CHO"

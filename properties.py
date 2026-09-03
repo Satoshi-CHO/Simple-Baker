@@ -118,6 +118,30 @@ class SIMPLEBAKER_Settings(PropertyGroup):
     """Current-scene settings not supplied by Blender's BakeSettings RNA."""
 
     initialized: BoolProperty(default=False, options={"SKIP_SAVE"})
+    output_map_tab: EnumProperty(
+        name="Output Map Category",
+        items=(
+            ("PBR", "PBR Maps", "PBR texture maps for Principled BSDF and external tools"),
+            ("CYCLES", "Cycles Standard", "Blender's standard Cycles bake passes"),
+        ),
+        default="PBR",
+        options={"SKIP_SAVE"},
+    )
+    pbr_output_section: EnumProperty(
+        name="PBR Output Type",
+        items=(
+            ("INDIVIDUAL", "Individual Maps", "Bake individual PBR texture maps"),
+            ("PACK", "Packed Output", "Pack PBR data into RGBA presets"),
+        ),
+        default="INDIVIDUAL",
+        options={"SKIP_SAVE"},
+    )
+    show_advanced_pbr_inputs: BoolProperty(
+        name="Advanced PBR Inputs (Raw)",
+        description="Show advanced raw Principled BSDF input maps",
+        default=False,
+        options={"SKIP_SAVE"},
+    )
     workflow: EnumProperty(
         name="Bake Method",
         items=(
@@ -181,6 +205,62 @@ class SIMPLEBAKER_Settings(PropertyGroup):
     map_transmission: _map_property(
         "Transmission",
         "Bakes the transmission or refraction pass. Use for compositing or a custom shader workflow.",
+    )
+    map_base_color: _map_property(
+        "Base Color",
+        "Bakes the direct Principled Base Color input. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_metallic: _map_property(
+        "Metallic",
+        "Bakes the Principled Metallic input. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_alpha: _map_property(
+        "Alpha",
+        "Bakes the Principled Alpha input. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_smoothness: _map_property(
+        "Smoothness",
+        "Bakes inverted Principled Roughness (1 - Roughness). Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_transmission_weight: _map_property(
+        "Transmission Weight",
+        "Bakes raw Principled Transmission Weight. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_specular_ior_level: _map_property(
+        "Specular IOR Level",
+        "Bakes raw Principled Specular IOR Level; it is not F0 itself. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_coat_weight: _map_property(
+        "Coat Weight",
+        "Bakes raw Principled Coat Weight. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_coat_roughness: _map_property(
+        "Coat Roughness",
+        "Bakes raw Principled Coat Roughness. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_sheen_weight: _map_property(
+        "Sheen Weight",
+        "Bakes raw Principled Sheen Weight. Requires Principled BSDF connected directly to Material Output.",
+    )
+    map_subsurface_weight: _map_property(
+        "Subsurface Weight",
+        "Bakes raw Principled Subsurface Weight. Requires Principled BSDF connected directly to Material Output.",
+    )
+    pack_orm: _map_property(
+        "ORM (AO, Roughness, Metallic)",
+        "Pack Occlusion (R), Roughness (G), Metallic (B) for Godot and Unreal Engine.",
+    )
+    pack_gltf: _map_property(
+        "glTF Metallic-Roughness",
+        "Pack Roughness (G) and Metallic (B) according to the glTF 2.0 standard.",
+    )
+    pack_unity_mask: _map_property(
+        "Unity Mask Map",
+        "Pack Metallic (R), AO (G), Detail (B), Smoothness (A) for Unity Lit shaders.",
+    )
+    pack_base_color_alpha: _map_property(
+        "Base Color + Alpha",
+        "Pack Base Color (RGB) and Alpha (A) into a single 4-channel image.",
     )
     common_name: StringProperty(name="Common Name", default="", update=_setting_updated)
     output_directory: StringProperty(

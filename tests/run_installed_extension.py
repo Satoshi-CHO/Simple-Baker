@@ -63,12 +63,11 @@ def _save_preferences_and_bake() -> None:
     target = _create_target()
     settings.bake_target = target
     settings.workflow = "SELF"
-    for property_name in (
-        "map_combined", "map_ao", "map_shadow", "map_normal", "map_uv",
-        "map_roughness", "map_emit", "map_environment", "map_diffuse",
-        "map_glossy", "map_transmission",
-    ):
-        setattr(settings, property_name, False)
+    constants = importlib.import_module(f"{extension_id}.constants")
+    for key, _, _ in constants.BAKE_MAPS:
+        setattr(settings, f"map_{key}", False)
+    for _, prop_name, _, _ in constants.PACK_PRESETS:
+        setattr(settings, prop_name, False)
     settings.map_diffuse = True
     for field, value in EXPECTED.items():
         setattr(settings, field, value)

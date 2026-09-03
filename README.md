@@ -31,7 +31,12 @@ The goal is not to replace Blender's Bake settings. It is to preserve their fami
 ### Features
 
 - **Bake This Model** and **Transfer From Other Models** workflows. In transfer mode, source model(s) and the bake target are explicitly selected in the add-on UI.
-- Eleven output maps: Combined, AO, Shadow, Normal, UV, Roughness, Emit, Environment, Diffuse, Glossy, and Transmission
+- Two purpose-based output-map tabs with shared selections where the same map serves multiple workflows:
+  - **PBR Maps**: divided into **Individual Maps** (Standard PBR & Advanced PBR) and **Packed Output**.
+    - **Standard PBR**: Base Color, Metallic, Roughness, Smoothness, Normal, AO, Emission, and Alpha.
+    - **Advanced PBR (Raw)**: hidden by default and shown with an opt-in checkbox. Includes Transmission Weight, Specular IOR Level, Coat Weight, Coat Roughness, Sheen Weight, and Subsurface Weight extracted from Principled BSDF without engine-specific conversion.
+    - **Packed Output**: Multi-channel packed RGBA presets for game engines and glTF (ORM, glTF Metallic-Roughness, Unity Mask Map, and Base Color + Alpha) composited with NumPy.
+  - **Cycles Standard**: Combined, AO, Shadow, Normal, UV, Roughness, Emit, Environment, Diffuse, Glossy, and Transmission
 - PNG (8/16-bit), Targa (8-bit), and OpenEXR (16/32-bit) output
 - OpenGL, DirectX, and Custom normal-map formats
 - Temporary Image Texture nodes or nodes retained in the material
@@ -78,7 +83,12 @@ Simple Baker は、大量処理を中心としたプロダクション向けベ�
 ### 主な機能
 
 - 「このモデルをベイク」と「別のモデルから転写」の 2 モード。転写では、転写元モデル（複数可）とベイク先モデルをアドオン UI で明示的に指定できます。
-- Combined、AO、Shadow、Normal、UV、Roughness、Emit、Environment、Diffuse、Glossy、Transmission の 11 マップ
+- 用途に合わせて整理された 2 つの出力マップタブ（共通マップは選択状態を共有）:
+  - **PBR マップ**: **個別マップ**（基本 PBR／高度な PBR）と**パック出力**に分類。
+    - **基本 PBR**: Base Color、Metallic、Roughness、Smoothness、Normal、AO、Emission、Alpha。
+    - **高度な PBR（生値）**: 初期状態では非表示とし、チェックボックで明示的に有効化した場合だけ表示。Transmission Weight、Specular IOR Level、Coat Weight、Coat Roughness、Sheen Weight、Subsurface Weight をエンジン固有の変換なしで Principled BSDF から抽出。
+    - **パック出力**: 主要ゲームエンジンや glTF 規格向けの RGBA 合成プリセット（ORM、glTF メタリック／粗さ、Unity マスクマップ、ベースカラー + アルファ）。NumPy による高速合成と二重ベイク防止に対応。
+  - **Cycles 標準**: Combined、AO、Shadow、Normal、UV、Roughness、Emit、Environment、Diffuse、Glossy、Transmission
 - PNG（8/16 bit）、Targa（8 bit）、OpenEXR（16/32 bit）への保存
 - OpenGL、DirectX、Custom のノーマルマップ形式
 - 一時的な Image Texture ノード、またはマテリアルに残すノードの選択
@@ -101,9 +111,9 @@ python tests/test_pure_logic.py
 blender --background --factory-startup --python tests/run_all.py
 ```
 
-Run the Blender integration suite with each supported Blender version before a release. The suite covers self-baking, UI-selected model transfer, multiple materials, all eleven maps, output formats, invalid input, overwrite protection, re-baking with retained nodes, and recovery from save failures.
+Run the Blender integration suite with each supported Blender version before a release. The suite covers self-baking, UI-selected model transfer, multiple materials, all eleven Cycles maps, ten directly extracted standard and advanced PBR maps, four channel-packing presets, pixel values, output formats, invalid input, overwrite protection, re-baking with retained nodes, and recovery from preparation or save failures.
 
-リリース前には、対応する各 Blender バージョンで実機回帰スイートを実行します。自己ベイク、UI 指定によるモデル間転写、複数マテリアル、全 11 マップ、保存形式、異常入力、上書き保護、保持ノードを使う再ベイク、保存失敗時の復旧を確認します。
+リリース前には、対応する各 Blender バージョンで実機回帰スイートを実行します。自己ベイク、UI指定によるモデル間転写、複数マテリアル、Cycles標準11マップ、直接抽出する基本・高度PBRマップ10種、チャンネルパック4種、画素値、保存形式、異常入力、上書き保護、保持ノードを使う再ベイク、準備・保存失敗時の復旧を確認します。
 
 ## License / ライセンス
 
